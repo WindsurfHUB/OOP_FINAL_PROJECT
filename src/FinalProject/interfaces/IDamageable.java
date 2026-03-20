@@ -6,4 +6,5 @@ public interface IDamageable {
     String getName();
     int getHealth();
     int getMaxHealth();
+    IConsumable getDrop();
 }

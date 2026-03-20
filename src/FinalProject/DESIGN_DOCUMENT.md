@@ -1,8 +1,8 @@
-# RPG Project: Design Document
+# Roguelike RPG Dungeon: Design Document
 
-This document outlines the architectural decisions and design choices made for the Java Text-Based RPG.
+This document outlines the architectural decisions and design choices for the Roguelike RPG Dungeon overhaul.
 
-## Class Diagram (Mermaid)
+## Class Diagram (Updated)
 
 ```mermaid
 classDiagram
@@ -12,6 +12,8 @@ classDiagram
         +isDestroyed() boolean
         +getName() String
         +getHealth() int
+        +getMaxHealth() int
+        +getDrop() IConsumable
     }
     
     class IConsumable {
@@ -27,57 +29,81 @@ classDiagram
         #maxHealth int
         #attackPower int
         +attack(IDamageable target)*
-    }
-
-    class DestructibleObject {
-        <<abstract>>
-        #name String
-        #health int
+        +increaseAttackPower(int amount)
+        +increaseMaxHealth(int amount)
     }
 
     class Hero {
         <<abstract>>
-        +heal(int amount)
-        +useItem(IConsumable item)
+        -int gold
+        -Weapon weapon
+        -Armor headgear
+        -Armor chestplate
+        -List~Skill~ skills
+        +equip(Equipment item)
+        +performSkillAttack(IDamageable target, Skill skill)
+        +initializeSkills()*
+    }
+
+    class Equipment {
+        <<abstract>>
+        #name String
+        #price int
+        #rarity String
+        +getStatsDescription()*
     }
 
     Entity <|-- Hero
     Entity <|-- Monster
     IDamageable <|.. Entity
     IDamageable <|.. DestructibleObject
-
+    
+    Equipment <|-- Weapon
+    Equipment <|-- Armor
+    
     Hero <|-- Warrior
     Hero <|-- Mage
     
     DestructibleObject <|-- WoodenBox
     IConsumable <|.. HealthPotion
+    IConsumable <|.. BerserkPotion
 
     class RPGGame {
         -Hero player
+        -DungeonManager dungeon
+        -Shop shop
         -List~IDamageable~ targets
-        -Scanner scanner
         +start()
+        +gameLoop()
     }
 
     RPGGame --> Hero : manages
-    RPGGame --> IDamageable : interacts with
+    RPGGame --> DungeonManager : uses for scaling
+    RPGGame --> Shop : manages intermission
+    Hero --> Equipment : owns
+    Hero --> Skill : uses
 ```
 
 ## Design Rationale
 
-### 1. Interface-Based Interaction (`IDamageable`)
-The core design philosophy revolves around the `IDamageable` interface. Instead of having separate methods to attack monsters and objects, the `Hero` interacts with an interface. This allows for seamless polymorphism where any object that can "take damage" (living or non-living) can be targeted by the same combat logic.
+### 1. Roguelike Progression & Scaling
+- **`DungeonManager`**: Centralizes depth tracking and enemy scaling logic. Stats for `Monster` objects scale linearly with depth, ensuring a consistent challenge as the player progresses.
+- **`Search` Mechanism**: Instead of static encounters, the "Search" mechanic introduces randomness and choice, key pillars of the Roguelike genre.
 
-### 2. Abstract Base Classes (`Entity` and `DestructibleObject`)
-- **Entity**: Consolidates shared attributes like `health`, `name`, and `attackPower` for all living characters. This follows the **DRY (Don't Repeat Yourself)** principle, preventing code duplication across `Hero` and `Monster` classes.
-- **DestructibleObject**: Specifically handles objects that don't have combat logic (like attacking back) but still possess health.
+### 2. Equipment & Stat System
+- **Composition over Inheritance**: The `Hero` class uses composition to manage its gear (`Weapon`, `Armor`). This allows for dynamic stat calculation where the effective attack and health are derived from base stats plus equipment bonuses.
+- **Encapsulation**: Equipment details (damage bonuses, health bonuses) are encapsulated within their respective classes, following the **Single Responsibility Principle**.
 
-### 3. Separation of Concerns
-- **`game` package**: Logic for the game loop, user interface, and initialization is separated from the data models. This makes the codebase easier to maintain and test.
-- **`models` package**: Focuses purely on the properties and behaviors of individual game elements.
+### 3. Combat Skills & Strategy
+- **`Skill` Class**: Instead of a single "Attack" method, heroes now have a `List<Skill>`. This provides depth to combat, allowing players to choose between standard hits and high-damage (but potentially costly) moves.
+- **Polymorphism**: The `performSkillAttack` method in `Hero` uses the provided `Skill` object to calculate final damage, allowing different skills to behave uniquely without complex conditional logic.
 
-### 4. Robustness through Input Validation
-To ensure a professional user experience (and prevent crashes during a demo), the `getValidIntInput` method centralizes scanner logic. It uses a `try-catch` block to handle non-integer strings and checks for valid ranges, ensuring the game loop is resilient against user error.
+### 4. Meta-Progression & Persistence
+- **State Preservation**: The `respawnHero` method in `RPGGame` demonstrates how object state (Gold, Gear) can be saved and transferred to a new instance of a `Hero` after death, creating a "Roguelite" loop.
+- **Currency System**: The introduction of Gold and a `Shop` provides long-term goals and a way to mitigate RNG through strategic purchases.
 
-### 5. Strategy for Scaling
-The implementation of `IConsumable` allows the game to support a wide variety of items (Mana Potions, Buffs, etc.) without modifying the `Hero` class logic. This follows the **Open/Closed Principle**—the system is open for extension but closed for modification.
+### 5. OOP Criteria Fulfillment
+- **Abstraction**: `IDamageable` and `IConsumable` interfaces allow the game engine to interact with objects without knowing their concrete implementation.
+- **Inheritance**: A rich hierarchy from `Entity` to `Warrior`/`Mage` and `Equipment` to `Weapon`/`Armor` ensures code reuse and logical structuring.
+- **Polymorphism**: Used extensively in combat (skills), drops (boxes/monsters), and items (potions).
+- **Encapsulation**: Strict use of access modifiers and public API methods (e.g., `increaseMaxHealth`) to protect internal object state.

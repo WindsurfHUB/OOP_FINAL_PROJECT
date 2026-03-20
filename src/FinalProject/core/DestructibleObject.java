@@ -1,5 +1,6 @@
 package FinalProject.core;
 
+import FinalProject.interfaces.IConsumable;
 import FinalProject.interfaces.IDamageable;
 
 /**
@@ -43,5 +44,10 @@ public abstract class DestructibleObject implements IDamageable {
     @Override
     public int getMaxHealth() {
         return this.maxHealth;
+    }
+
+    @Override
+    public IConsumable getDrop() {
+        return null; // By default, destructible objects don't drop items.
     }
 }
