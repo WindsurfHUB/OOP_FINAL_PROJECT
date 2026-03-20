@@ -1,5 +1,6 @@
 package FinalProject.core;
 
+import FinalProject.interfaces.IConsumable;
 import FinalProject.interfaces.IDamageable;
 
 /**
@@ -47,8 +48,22 @@ public abstract class Entity implements IDamageable {
         return this.maxHealth;
     }
 
+    @Override
+    public IConsumable getDrop() {
+        return null; // By default, entities don't drop items.
+    }
+
     public int getAttackPower() {
         return this.attackPower;
+    }
+
+    public void increaseAttackPower(int amount) {
+        this.attackPower += amount;
+    }
+
+    public void increaseMaxHealth(int amount) {
+        this.maxHealth += amount;
+        this.health += amount; // Also heal for the amount increased
     }
 
     /**

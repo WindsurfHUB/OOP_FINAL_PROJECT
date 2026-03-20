@@ -4,50 +4,91 @@ import FinalProject.interfaces.IConsumable;
 import FinalProject.interfaces.IDamageable;
 import FinalProject.models.*;
 
+import java.util.ArrayList;
 import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Random;
 
 /**
- * Main game engine for the Text-Based RPG.
+ * Main game engine for the Roguelike RPG Dungeon.
  */
 public class RPGGame {
     private Scanner scanner;
+    private Random random;
     private Hero player;
     private List<IDamageable> targets;
     private List<IConsumable> inventory;
+    private DungeonManager dungeon;
+    private Shop shop;
     private boolean isRunning;
 
     public RPGGame() {
-        scanner = new Scanner(System.in);
-        isRunning = true;
+        this.scanner = new Scanner(System.in);
+        this.random = new Random();
+        this.dungeon = new DungeonManager();
+        this.shop = new Shop();
+        this.targets = new ArrayList<>();
+        this.inventory = new ArrayList<>();
+        this.isRunning = true;
     }
 
-    /**
-     * Start the game's main loop.
-     */
     public void start() {
-        showMainMenu();
-        while (isRunning) {
-            handleAction();
-            checkGameConditions();
+        boolean showExitMessage = true;
+        while (showExitMessage) {
+            showMainMenu();
+            if (isRunning) {
+                while (isRunning && !player.isDestroyed()) {
+                    gameLoop();
+                    
+                    if (player.isDestroyed()) {
+                        System.out.println("\nWould you like to try again with your saved Gold? (1. Yes, 2. No)");
+                        int choice = getValidIntInput(1, 2);
+                        if (choice == 1) {
+                            respawnHero();
+                            isRunning = true; // Stay in the while loop
+                        } else {
+                            showExitMessage = false;
+                            isRunning = false;
+                        }
+                    } else {
+                        showExitMessage = false;
+                    }
+                }
+            } else {
+                showExitMessage = false;
+            }
         }
-        System.out.println("Thank you for playing!");
+        System.out.println("Farewell, adventurer...");
     }
 
     private void showMainMenu() {
-        System.out.println("================================");
-        System.out.println("     WELCOME TO DII DUNGEON    ");
-        System.out.println("================================");
-        System.out.println("1. Start New Game");
+        if (player != null && !player.isDestroyed()) return; // Don't show menu if game is ongoing
+        System.out.println("  _____           _           _   :");
+        System.out.println(" |  __ \\         (_)         | |  :");
+        System.out.println(" | |__) | __ ___  _  ___  ___| |_ :");
+        System.out.println(" |  ___/ '__/ _ \\| |/ _ \\/ __| __|:");
+        System.out.println(" | |   | | | (_) | |  __/ (__| |_ :");
+        System.out.println(" |_|   |_|  \\___/| |\\___|\\___|\\__|:");
+        System.out.println("                _/ |              ");
+        System.out.println("               |__/               ");
+        System.out.println("  _____  _____ _____      _____  _    _ _   _  _____ ______ ____  _   _ ");
+        System.out.println(" |  __ \\|_   _|_   _|    |  __ \\| |  | | \\ | |/ ____|  ____/ __ \\| \\ | |");
+        System.out.println(" | |  | | | |   | | ____ | |  | | |  | |  \\| | |  __| |__ | |  | |  \\| |");
+        System.out.println(" | |  | | | |   | |/ ___|| |  | | |  | | . ` | | |_ |  __|| |  | | . ` |");
+        System.out.println(" | |__| |_| |_ _| |____  | |__| | |__| | |\\  | |__| | |___| |__| | |\\  |");
+        System.out.println(" |_____/|_____|____|____||_____/ \\____/|_| \\_|\\_____|______\\____/|_| \\_|");
+        System.out.println();
+        System.out.println("1. [ Start Exploring ]");
         System.out.println("2. How to Play");
         System.out.println("3. Exit");
-        System.out.print("Choose an option: ");
+        System.out.print("\nChoose an option: ");
 
         int choice = getValidIntInput(1, 3);
         switch (choice) {
             case 1:
-                initializeGame();
+                if (player == null) initializeGame();
+                isRunning = true;
                 break;
             case 2:
                 showInstructions();
@@ -59,13 +100,63 @@ public class RPGGame {
         }
     }
 
-    private void showInstructions() {
-        System.out.println("\n--- HOW TO PLAY ---");
-        System.out.println("- Choose a class: Warrior (High HP/Def) or Mage (High Attack).");
-        System.out.println("- Battle monsters or break boxes to progress.");
-        System.out.println("- Use potions to heal yourself if your HP is low.");
-        System.out.println("- Defeat all targets in the world to win.");
-        System.out.println("- If your HP reaches 0, you lose.\n");
+    private void gameLoop() {
+        while (isRunning && !player.isDestroyed()) {
+            System.out.println("\n=== [ DUNGEON DEPTH: " + dungeon.getDepth() + " ] ===");
+            System.out.println("Searches Completed: " + dungeon.getLevelSearches() + "/4 (Min)");
+            handleAction();
+            
+            // Level clears only if:
+            // 1. All found targets are defeated
+            // 2. Minimum 4 searches have been performed
+            if (targets.isEmpty() && dungeon.getLevelSearches() >= 4 && isRunning) {
+                // FORCE a spawn if level search requirement met but nothing was found
+                // This ensures every level has at least one challenge
+                if (dungeon.getLevelSearches() == 4 && targets.isEmpty()) {
+                    System.out.println("\nAn ambush! A monster appears before you can leave!");
+                    DungeonManager.SearchResponse resp = dungeon.search(0, 0); 
+                    if (resp.target != null) targets.add(resp.target);
+                    continue; // Go back to top of loop to handle the new target
+                }
+                
+                System.out.println("\nLevel Cleared! You've found a safe spot to rest.");
+                player.fullyRestore(); // Recover all HP and AP
+                dungeon.nextDepth();
+                intermissionMenu();
+            }
+        }
+    }
+
+    private void intermissionMenu() {
+        boolean resting = true;
+        shop.restock(dungeon.getDepth());
+        
+        while (resting) {
+            System.out.println("\n--- INTERMISSION (Depth " + dungeon.getDepth() + ") ---");
+            System.out.println("1. Open Shop");
+            System.out.println("2. View Hero Stats & Gear");
+            System.out.println("3. Use Item");
+            System.out.println("4. Continue Exploring");
+            System.out.print("Action: ");
+
+            int choice = getValidIntInput(1, 4);
+            switch (choice) {
+                case 1: shop.openShop(player, inventory); break;
+                case 2: showHeroStats(); break;
+                case 3: useItemMenu(); break;
+                case 4: resting = false; break;
+            }
+        }
+    }
+
+    private void showHeroStats() {
+        System.out.println("\n--- " + player.getName().toUpperCase() + " STATS ---");
+        System.out.println("HP: " + player.getHealth() + "/" + player.getEffectiveMaxHealth());
+        System.out.println("Attack: " + player.getEffectiveAttack());
+        System.out.println("Gold: " + player.getGold());
+        System.out.println("Weapon: " + (player.getWeapon() != null ? player.getWeapon().getName() : "None"));
+        System.out.println("Head: " + (player.getHeadgear() != null ? player.getHeadgear().getName() : "None"));
+        System.out.println("Chest: " + (player.getChestplate() != null ? player.getChestplate().getName() : "None"));
     }
 
     private void initializeGame() {
@@ -73,74 +164,288 @@ public class RPGGame {
         String name = scanner.nextLine();
 
         System.out.println("Choose your class:");
-        System.out.println("1. Warrior (HP: 120, Attack: 20)");
-        System.out.println("2. Mage (HP: 80, Attack: 35)");
+        System.out.println("1. Warrior (Sword & Shield, High HP)");
+        System.out.println("2. Mage (Staff & Spells, High Damage)");
         int classChoice = getValidIntInput(1, 2);
 
-        if (classChoice == 1) {
-            player = new Warrior(name);
-        } else {
-            player = new Mage(name);
-        }
+        if (classChoice == 1) player = new Warrior(name);
+        else player = new Mage(name);
 
-        GameInitializer initializer = new GameInitializer();
-        targets = initializer.getTargets();
-        inventory = initializer.getInventory();
+        inventory.add(new HealthPotion("Minor Health Potion", 30));
+        System.out.println("\nWelcome, " + player.getName() + "! The dungeon awaits.");
+    }
 
-        System.out.println("\nWelcome, " + player.getName() + "! Your journey begins.");
+    private void respawnHero() {
+        String name = player.getName();
+        int savedGold = player.getGold();
+        Weapon savedWeapon = player.getWeapon();
+        Armor savedHead = player.getHeadgear();
+        Armor savedChest = player.getChestplate();
+        
+        // Re-initialize based on class
+        if (player instanceof Warrior) player = new Warrior(name);
+        else player = new Mage(name);
+        
+        player.addGold(savedGold);
+        if (savedWeapon != null) player.equip(savedWeapon);
+        if (savedHead != null) player.equip(savedHead);
+        if (savedChest != null) player.equip(savedChest);
+        
+        dungeon = new DungeonManager(); // Reset depth to 1
+        targets.clear();
+        inventory.clear();
+        inventory.add(new HealthPotion("Minor Health Potion", 30));
+        
+        System.out.println("\nBack to Level 1, but your gear remains...");
+        intermissionMenu(); // Allow shopping before restart
     }
 
     private void handleAction() {
-        if (!isRunning || player == null) return;
-
-        System.out.println("\n--- " + player.getName().toUpperCase() + " [" + player.getHealth() + "/" + player.getMaxHealth() + " HP] ---");
-        System.out.println("1. Attack a Target");
-        System.out.println("2. Use an Item");
-        System.out.println("3. Retreat (Quit Game)");
+        System.out.println("\n--- " + player.getName().toUpperCase() + " [" + player.getHealth() + "/" + player.getEffectiveMaxHealth() + " HP] ---");
+        System.out.println("1. Search for Target");
+        if (!targets.isEmpty()) System.out.println("2. Encounter Found Targets (" + targets.size() + ")");
+        System.out.println("3. Use Item");
+        System.out.println("4. Retreat (Quit Game)");
         System.out.print("Action: ");
 
-        int choice = getValidIntInput(1, 3);
+        int choice = getValidIntInput(1, 4);
         switch (choice) {
-            case 1:
-                attackTargetMenu();
+            case 1: searchArea(); break;
+            case 2: 
+                if (!targets.isEmpty()) attackTargetMenu(); 
+                else System.out.println("Nothing to encounter. Search first!");
                 break;
-            case 2:
-                useItemMenu();
+            case 3: useItemMenu(); break;
+            case 4: isRunning = false; break;
+        }
+    }
+
+    private void searchArea() {
+        if (targets.size() >= 5) {
+            System.out.println("\nYour path is blocked by existing targets! Defeat them first.");
+            return;
+        }
+        System.out.println("\nYou search the dark corridors...");
+        
+        // Count existing monsters and boxes
+        int monsters = 0;
+        int boxes = 0;
+        for (IDamageable t : targets) {
+            if (t instanceof Monster) monsters++;
+            else if (t instanceof WoodenBox) boxes++;
+        }
+
+        DungeonManager.SearchResponse resp = dungeon.search(monsters, boxes);
+        
+        // Regenerate AP on search (Passive regen)
+        player.restoreAP(40);
+        System.out.println("Rested briefly while searching (+40 AP). Current AP: " + player.getCurrentAP());
+
+        if (resp.event != null) {
+            handleSearchEvent(resp);
+        } else if (resp.target != null) {
+            System.out.println("You discovered a " + resp.target.getName() + "!");
+            targets.add(resp.target);
+        } else {
+            int goldFound = random.nextInt(10) + 5;
+            System.out.println("You found nothing but " + goldFound + " gold on the floor.");
+            player.addGold(goldFound);
+        }
+
+        // Check if level is forced to end
+        if (dungeon.isForcedToEnd()) {
+            System.out.println("\n!!! The floor begins to crumble! You must face your foes now !!!");
+            if (targets.isEmpty()) {
+                System.out.println("A powerful guardian blocks the exit!");
+                targets.add(dungeon.createScaledBoss());
+            }
+            attackTargetMenu();
+        }
+    }
+
+    private void handleSearchEvent(DungeonManager.SearchResponse resp) {
+        switch (resp.event) {
+            case "DANGER_ZONE":
+                System.out.println("\n!!! DANGER ZONE !!!");
+                System.out.println("The air grows heavy... all monsters in this area have boosted attack!");
+                for (IDamageable t : targets) {
+                    if (t instanceof Monster) {
+                        ((Monster) t).increaseAttackPower(5);
+                    }
+                }
+                // Spawn an aggressive monster
+                Monster m = dungeon.createScaledMonster("Aggressive Monster", 40, 10);
+                m.increaseAttackPower(5);
+                System.out.println("A " + m.getName() + " emerges from the shadows!");
+                targets.add(m);
                 break;
-            case 3:
-                isRunning = false;
+            case "FOGGY_AREA":
+                System.out.println("\n!!! FOGGY AREA !!!");
+                System.out.println("Thick fog rolls in. You can't see far, and multiple figures approach...");
+                if (resp.target != null) {
+                    System.out.println("Discovered: " + resp.target.getName());
+                    targets.add(resp.target);
+                }
+                if (resp.secondTarget != null) {
+                    System.out.println("Discovered: " + resp.secondTarget.getName());
+                    targets.add(resp.secondTarget);
+                }
+                break;
+            case "TRAP":
+                System.out.println("\n!!! TRAP !!!");
+                System.out.print("You stepped on a pressure plate! ");
+                if (random.nextBoolean()) {
+                    System.out.println("You quickly roll away and dodge the arrows!");
+                } else {
+                    int damage = (int) (player.getMaxHealth() * 0.15);
+                    System.out.println("Searing arrows hit you for " + damage + " damage!");
+                    player.takeDamage(damage);
+                    System.out.println("Your HP: " + player.getHealth() + "/" + player.getMaxHealth());
+                }
                 break;
         }
     }
 
     private void attackTargetMenu() {
-        if (targets.isEmpty()) {
-            System.out.println("There are no more targets!");
-            return;
-        }
-
-        System.out.println("\nWho/What do you want to attack?");
-        for (int i = 0; i < targets.size(); i++) {
-            IDamageable t = targets.get(i);
-            System.out.println((i + 1) + ". " + t.getName() + " (" + t.getHealth() + "/" + t.getMaxHealth() + " HP)");
-        }
-        System.out.println((targets.size() + 1) + ". Back");
-
-        int choice = getValidIntInput(1, targets.size() + 1);
-        if (choice <= targets.size()) {
-            IDamageable selectedTarget = targets.get(choice - 1);
-            player.attack(selectedTarget);
-
-            // Counter-attack logic if it's a living Entity
-            if (!selectedTarget.isDestroyed() && selectedTarget instanceof Monster) {
-                Monster monster = (Monster) selectedTarget;
-                monster.attack(player);
+        while (!targets.isEmpty() && !player.isDestroyed()) {
+            System.out.println("\nSelect a target to engage (Combat until one side falls):");
+            for (int i = 0; i < targets.size(); i++) {
+                IDamageable t = targets.get(i);
+                System.out.println((i + 1) + ". " + t.getName() + " (" + t.getHealth() + "/" + t.getMaxHealth() + " HP)");
+            }
+            if (!dungeon.isForcedToEnd()) {
+                System.out.println((targets.size() + 1) + ". Back");
             }
 
-            // Cleanup destroyed targets
-            if (selectedTarget.isDestroyed()) {
-                targets.remove(selectedTarget);
+            int choice = getValidIntInput(1, targets.size() + (dungeon.isForcedToEnd() ? 0 : 1));
+            if (choice <= targets.size()) {
+                IDamageable selectedTarget = targets.get(choice - 1);
+                boolean fled = combatUntilDeath(selectedTarget);
+
+                if (fled) {
+                    targets.remove(selectedTarget);
+                    if (dungeon.isForcedToEnd() && !targets.isEmpty()) {
+                        System.out.println("\nAnother foe approaches!");
+                    }
+                } else if (selectedTarget.isDestroyed()) {
+                    handleVictory(selectedTarget);
+                    targets.remove(selectedTarget);
+                    if (dungeon.isForcedToEnd() && !targets.isEmpty()) {
+                        System.out.println("\nAnother foe approaches!");
+                    }
+                }
+            } else {
+                break; // Back selected
             }
+        }
+    }
+
+    private boolean combatUntilDeath(IDamageable target) {
+        System.out.println("\n--- COMMENCING COMBAT: " + player.getName() + " vs " + target.getName() + " ---");
+        while (!player.isDestroyed() && !target.isDestroyed()) {
+            // Player Turn
+            System.out.println("\n[" + player.getName() + ": " + player.getHealth() + "/" + player.getEffectiveMaxHealth() + " HP | " + player.getCurrentAP() + " AP]");
+            
+            System.out.println("1. Choose Skill (Action)");
+            System.out.println("2. Use Item (Quick Action)");
+            System.out.println("3. Flee (40% Success)");
+            
+            int actionChoice = getValidIntInput(1, 3);
+            if (actionChoice == 2) {
+                useItemMenu();
+                // Items don't end turn, let them choose again
+                continue;
+            }
+
+            if (actionChoice == 3) {
+                if (random.nextInt(100) < 40) {
+                    System.out.println("\nYou successfully fled from combat!");
+                    return true;
+                } else {
+                    System.out.println("\nFlee failed! The enemy catches you off guard!");
+                }
+            } else {
+                // Choose Skill
+                System.out.println("Choose your attack:");
+                List<Skill> skills = player.getSkills();
+                for (int i = 0; i < skills.size(); i++) {
+                    Skill s = skills.get(i);
+                    String apInfo = (s.getApCost() == 0) ? "Restores 20 AP" : "Costs " + s.getApCost() + " AP";
+                    System.out.println((i + 1) + ". " + s.getName() + " (Damage: " + (int)(s.getDamageMultiplier() * 100) + "%, " + apInfo + ")");
+                }
+                
+                int skillChoice = -1;
+                while (skillChoice == -1) {
+                    int input = getValidIntInput(1, skills.size());
+                    if (player.getCurrentAP() >= skills.get(input - 1).getApCost()) {
+                        skillChoice = input;
+                    } else {
+                        System.out.print("Not enough AP! Choose another: ");
+                    }
+                }
+                
+                Skill selectedSkill = skills.get(skillChoice - 1);
+                
+                // AP Logic: 0 AP attacks restore 20 AP, others spend AP
+                if (selectedSkill.getApCost() == 0) {
+                    player.restoreAP(20);
+                    System.out.println("Used a basic attack and caught your breath (+20 AP).");
+                } else {
+                    player.spendAP(selectedSkill.getApCost());
+                }
+                
+                player.performSkillAttack(target, selectedSkill);
+            }
+
+            // Enemy Turn
+            if (!target.isDestroyed() && target instanceof Monster) {
+                ((Monster) target).attack(player);
+            }
+        }
+        return false;
+    }
+
+    private void handleVictory(IDamageable target) {
+        int gold = dungeon.getGoldReward(target);
+        player.addGold(gold);
+        
+        IConsumable drop = target.getDrop();
+        if (drop != null) {
+            System.out.println("The " + target.getName() + " dropped a " + drop.getName() + "!");
+            inventory.add(drop);
+        }
+
+        // Powerup Choice (10% chance)
+        if (random.nextInt(100) < 10) {
+            choosePowerup(target);
+        } else {
+            System.out.println("\nVictory achieved! You press on...");
+        }
+    }
+
+    private void choosePowerup(IDamageable defeated) {
+        System.out.println("\nYou feel stronger after the victory! Choose a Powerup:");
+        int scale = defeated.getMaxHealth() / 10;
+        
+        System.out.println("1. Titan's Strength (+ " + (scale/2 + 1) + " Base Attack)");
+        System.out.println("2. Vitality Surge (+ " + (scale + 5) + " Max HP)");
+        System.out.println("3. Quick Mending (Heal " + (scale * 2 + 10) + " HP)");
+
+        int choice = getValidIntInput(1, 3);
+        switch (choice) {
+            case 1: 
+                int atkBonus = scale/2 + 1;
+                player.increaseAttackPower(atkBonus); 
+                System.out.println("Base attack increased by " + atkBonus);
+                break;
+            case 2: 
+                int hpBonus = scale + 5;
+                player.increaseMaxHealth(hpBonus); 
+                System.out.println("Max HP increased by " + hpBonus);
+                break;
+            case 3: 
+                player.heal(scale * 2 + 10); 
+                break;
         }
     }
 
@@ -149,8 +454,7 @@ public class RPGGame {
             System.out.println("Inventory is empty!");
             return;
         }
-
-        System.out.println("\nSelect an item to use:");
+        System.out.println("\nSelect an item:");
         for (int i = 0; i < inventory.size(); i++) {
             System.out.println((i + 1) + ". " + inventory.get(i).getName());
         }
@@ -164,32 +468,27 @@ public class RPGGame {
         }
     }
 
-    private void checkGameConditions() {
-        if (player.isDestroyed()) {
-            System.out.println("\nGAME OVER: Your hero has fallen.");
-            isRunning = false;
-        } else if (targets.isEmpty()) {
-            System.out.println("\nVICTORY: You have cleared all targets!");
-            isRunning = false;
-        }
+    private void showInstructions() {
+        System.out.println("\n--- HOW TO PLAY ---");
+        System.out.println("- Choose a class and start exploring the dungeon.");
+        System.out.println("- 'Search' to find enemies and loot.");
+        System.out.println("- Defeating enemies grants Gold, Gear, and Powerups.");
+        System.out.println("- Clear all found targets to descend deeper into the dungeon.");
+        System.out.println("- If you die, you can restart at Depth 1 with your saved gear!");
     }
 
-    /**
-     * Robust input handling for integers with validation.
-     * Prevents crashes on string inputs and ensures choices are within range.
-     */
     private int getValidIntInput(int min, int max) {
         int input = -1;
         while (input < min || input > max) {
             try {
                 input = scanner.nextInt();
                 if (input < min || input > max) {
-                    System.out.print("Invalid choice. Please enter a number between " + min + " and " + max + ": ");
+                    System.out.print("Invalid choice (" + min + "-" + max + "): ");
                 }
             } catch (InputMismatchException e) {
-                System.out.print("Input Error: Please enter a valid number: ");
+                System.out.print("Please enter a number: ");
             } finally {
-                scanner.nextLine(); // Clear scanner buffer
+                scanner.nextLine();
             }
         }
         return input;
