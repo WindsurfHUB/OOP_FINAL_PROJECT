@@ -156,10 +156,21 @@ public class Shop {
         int input = -1;
         while (input < min || input > max) {
             try {
-                input = scanner.nextInt();
-                scanner.nextLine();
+                if (scanner.hasNextInt()) {
+                    input = scanner.nextInt();
+                    if (input < min || input > max) {
+                        System.out.print("Invalid choice (" + min + "-" + max + "): ");
+                    }
+                } else {
+                    System.out.print("Please enter a number: ");
+                    scanner.next(); // consume invalid input
+                }
             } catch (Exception e) {
-                scanner.nextLine();
+                System.out.print("Error: Please try again: ");
+            } finally {
+                if (scanner.hasNextLine()) {
+                    scanner.nextLine();
+                }
             }
         }
         return input;

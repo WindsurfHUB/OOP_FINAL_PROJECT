@@ -22,6 +22,8 @@ A professional, university-level object-oriented programming project implemented
 ```text
 FinalProject/
 ├── Main.java                # Application Entry Point
+├── DESIGN_DOCUMENT.md       # Technical design documentation
+├── README.md                # Project overview and instructions
 ├── interfaces/
 │   ├── IDamageable.java     # Health management interface
 │   └── IConsumable.java     # Item usage interface
@@ -34,10 +36,17 @@ FinalProject/
 │   ├── Mage.java            # Magic damage specialist
 │   ├── Monster.java         # Enemy NPC
 │   ├── WoodenBox.java       # Destructible environment object
-│   └── HealthPotion.java    # Consumable recovery item
+│   ├── Equipment.java       # Base class for wearable items
+│   ├── Weapon.java          # Combat-enhancing equipment
+│   ├── Armor.java           # Defense-enhancing equipment
+│   ├── HealthPotion.java    # Consumable recovery item
+│   ├── BerserkPotion.java   # Temporary power-up item
+│   └── Skill.java           # Special combat abilities
 └── game/
     ├── RPGGame.java         # Game loop & Input handling
-    └── GameInitializer.java # Sample data setup
+    ├── GameInitializer.java # Sample data setup
+    ├── DungeonManager.java  # Level and monster progression
+    └── Shop.java            # Item purchasing system
 ```
 
 ## Key Features
