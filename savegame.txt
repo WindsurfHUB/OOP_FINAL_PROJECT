@@ -1,6 +1,8 @@
-heroName=a
+heroName=1
 heroClass=Warrior
-gold=0
+gold=110
+currentHP=100
+currentAP=65
 baseAttack=15
 baseMaxHealth=120
 weaponName=Stone Sword & Wooden Shield

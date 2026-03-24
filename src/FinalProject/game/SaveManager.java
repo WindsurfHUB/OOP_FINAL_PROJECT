@@ -31,6 +31,10 @@ public class SaveManager {
             writer.newLine();
             writer.write("gold=" + player.getGold());
             writer.newLine();
+            writer.write("currentHP=" + player.getHealth());
+            writer.newLine();
+            writer.write("currentAP=" + player.getCurrentAP());
+            writer.newLine();
             writer.write("baseAttack=" + player.getAttackPower());
             writer.newLine();
             writer.write("baseMaxHealth=" + player.getBaseMaxHealth());
@@ -163,6 +167,8 @@ public class SaveManager {
             save.heroName = data.get("heroName");
             save.heroClass = data.get("heroClass");
             save.gold = parseIntSafe(data.get("gold"), 0);
+            save.currentHP = parseIntSafe(data.get("currentHP"), 100);
+            save.currentAP = parseIntSafe(data.get("currentAP"), 100);
             save.baseAttack = parseIntSafe(data.get("baseAttack"), 15);
             save.baseMaxHealth = parseIntSafe(data.get("baseMaxHealth"), 100);
 
@@ -250,6 +256,8 @@ public class SaveManager {
         public String heroName;
         public String heroClass;
         public int gold;
+        public int currentHP;
+        public int currentAP;
         public int baseAttack;
         public int baseMaxHealth;
         public Weapon weapon;

@@ -65,9 +65,17 @@ public abstract class Entity implements IDamageable {
         this.attackPower += amount;
     }
 
+    public void setAttackPower(int attackPower) {
+        this.attackPower = attackPower;
+    }
+
     public void increaseMaxHealth(int amount) {
         this.maxHealth += amount;
         this.health += amount; // Also heal for the amount increased
+    }
+
+    public void setBaseMaxHealth(int maxHealth) {
+        this.maxHealth = maxHealth;
     }
 
     /**

@@ -46,6 +46,14 @@ public abstract class Hero extends Entity {
         this.currentAP = Math.min(maxAP, currentAP + amount);
     }
 
+    public void setCurrentAP(int currentAP) {
+        this.currentAP = Math.min(maxAP, currentAP);
+    }
+
+    public void setHealth(int health) {
+        this.health = Math.min(getEffectiveMaxHealth(), health);
+    }
+
     public boolean spendAP(int amount) {
         if (currentAP >= amount) {
             currentAP -= amount;

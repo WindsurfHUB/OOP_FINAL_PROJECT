@@ -502,10 +502,18 @@ public class RPGGame {
         if (data.heroClass.equals("Warrior")) player = new Warrior(data.heroName);
         else player = new Mage(data.heroName);
 
+        // Restore base stats (powerups)
+        player.setAttackPower(data.baseAttack);
+        player.setBaseMaxHealth(data.baseMaxHealth);
+
         if (data.gold > 0) player.addGold(data.gold);
         if (data.weapon != null) player.equip(data.weapon);
         if (data.headgear != null) player.equip(data.headgear);
         if (data.chestplate != null) player.equip(data.chestplate);
+
+        // Restore current health and AP
+        player.setHealth(data.currentHP);
+        player.setCurrentAP(data.currentAP);
 
         dungeon.setDepth(data.dungeonDepth);
         shop.setWeaponTier(data.weaponTier);
@@ -515,7 +523,6 @@ public class RPGGame {
         inventory.clear();
         if (data.inventory != null) inventory.addAll(data.inventory);
 
-        player.fullyRestore();
         System.out.println("Welcome back, " + player.getName() + "! Resuming at Depth " + dungeon.getDepth() + ".");
     }
 
