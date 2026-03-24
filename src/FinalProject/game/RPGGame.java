@@ -117,7 +117,12 @@ public class RPGGame {
     private void gameLoop() {
         while (isRunning && !player.isDestroyed()) {
             System.out.println("\n=== [ DUNGEON DEPTH: " + dungeon.getDepth() + " ] ===");
-            System.out.println("Searches Completed: " + dungeon.getLevelSearches() + "/4 (Minimum 4 search proceed)");
+            System.out.println("Searches: " + dungeon.getLevelSearches() + "/4");
+            if (dungeon.getLevelSearches() < 4) {
+                System.out.println("→ Complete the minimum searches to proceed");
+            } else if (!targets.isEmpty()) {
+                System.out.println("→ Defeat all " + targets.size() + " remaining target(s)");
+            }
             handleAction();
             
             // Level clears only if:
