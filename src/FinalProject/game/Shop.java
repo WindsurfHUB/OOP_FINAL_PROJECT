@@ -26,6 +26,13 @@ public class Shop {
         this.scanner = new Scanner(System.in);
     }
 
+    public int getWeaponTier() { return weaponTier; }
+    public int getHeadTier() { return headTier; }
+    public int getChestTier() { return chestTier; }
+    public void setWeaponTier(int tier) { this.weaponTier = tier; }
+    public void setHeadTier(int tier) { this.headTier = tier; }
+    public void setChestTier(int tier) { this.chestTier = tier; }
+
     /**
      * Refreshes potion stock and prepares gear for the current depth.
      */

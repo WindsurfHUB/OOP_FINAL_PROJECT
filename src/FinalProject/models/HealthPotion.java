@@ -20,6 +20,10 @@ public class HealthPotion implements IConsumable {
         hero.heal(healAmount);
     }
 
+    public int getHealAmount() {
+        return healAmount;
+    }
+
     @Override
     public String getName() {
         return name;

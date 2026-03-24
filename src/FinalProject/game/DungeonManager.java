@@ -37,6 +37,11 @@ public class DungeonManager {
         return depth;
     }
 
+    public void setDepth(int depth) {
+        this.depth = depth;
+        this.levelSearches = 0;
+    }
+
     public int getLevelSearches() {
         return levelSearches;
     }

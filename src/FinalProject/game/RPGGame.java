@@ -3,6 +3,7 @@ package FinalProject.game;
 import FinalProject.interfaces.IConsumable;
 import FinalProject.interfaces.IDamageable;
 import FinalProject.models.*;
+import FinalProject.game.SaveManager;
 
 import java.util.ArrayList;
 import java.util.InputMismatchException;
@@ -80,21 +81,34 @@ public class RPGGame {
         System.out.println(" |_____/|_____|____|____||_____/ \\____/|_| \\_|\\_____|______\\____/|_| \\_|");
         System.out.println();
         System.out.println("1. [ Start Exploring ]");
-        System.out.println("2. How to Play");
-        System.out.println("3. Exit");
+        if (SaveManager.saveExists()) System.out.println("2. [ Load Game ]");
+        System.out.println("3. How to Play");
+        System.out.println("4. Exit");
         System.out.print("\nChoose an option: ");
 
-        int choice = getValidIntInput(1, 3);
+        int choice = getValidIntInput(1, 4);
         switch (choice) {
             case 1:
                 if (player == null) initializeGame();
                 isRunning = true;
                 break;
             case 2:
+                if (SaveManager.saveExists()) {
+                    SaveManager.SaveData data = SaveManager.loadGame();
+                    if (data != null) {
+                        loadFromSave(data);
+                        isRunning = true;
+                    }
+                } else {
+                    System.out.println("No save file found.");
+                    showMainMenu();
+                }
+                break;
+            case 3:
                 showInstructions();
                 showMainMenu();
                 break;
-            case 3:
+            case 4:
                 isRunning = false;
                 break;
         }
@@ -136,15 +150,17 @@ public class RPGGame {
             System.out.println("1. Open Shop");
             System.out.println("2. View Hero Stats & Gear");
             System.out.println("3. Use Item");
-            System.out.println("4. Continue Exploring");
+            System.out.println("4. Save Game");
+            System.out.println("5. Continue Exploring");
             System.out.print("Action: ");
 
-            int choice = getValidIntInput(1, 4);
+            int choice = getValidIntInput(1, 5);
             switch (choice) {
                 case 1: shop.openShop(player, inventory); break;
                 case 2: showHeroStats(); break;
                 case 3: useItemMenu(); break;
-                case 4: resting = false; break;
+                case 4: SaveManager.saveGame(player, dungeon, shop, inventory); break;
+                case 5: resting = false; break;
             }
         }
     }
@@ -205,10 +221,11 @@ public class RPGGame {
         System.out.println("1. Search for Target");
         if (!targets.isEmpty()) System.out.println("2. Encounter Found Targets (" + targets.size() + ")");
         System.out.println("3. Use Item");
-        System.out.println("4. Retreat (Quit Game)");
+        System.out.println("4. Save & Quit");
+        System.out.println("5. Retreat (Quit Game)");
         System.out.print("Action: ");
 
-        int choice = getValidIntInput(1, 4);
+        int choice = getValidIntInput(1, 5);
         switch (choice) {
             case 1: searchArea(); break;
             case 2: 
@@ -216,7 +233,11 @@ public class RPGGame {
                 else System.out.println("Nothing to encounter. Search first!");
                 break;
             case 3: useItemMenu(); break;
-            case 4: isRunning = false; break;
+            case 4:
+                SaveManager.saveGame(player, dungeon, shop, inventory);
+                isRunning = false;
+                break;
+            case 5: isRunning = false; break;
         }
     }
 
@@ -475,6 +496,27 @@ public class RPGGame {
         System.out.println("- Defeating enemies grants Gold, Gear, and Powerups.");
         System.out.println("- Clear all found targets to descend deeper into the dungeon.");
         System.out.println("- If you die, you can restart at Depth 1 with your saved gear!");
+    }
+
+    private void loadFromSave(SaveManager.SaveData data) {
+        if (data.heroClass.equals("Warrior")) player = new Warrior(data.heroName);
+        else player = new Mage(data.heroName);
+
+        if (data.gold > 0) player.addGold(data.gold);
+        if (data.weapon != null) player.equip(data.weapon);
+        if (data.headgear != null) player.equip(data.headgear);
+        if (data.chestplate != null) player.equip(data.chestplate);
+
+        dungeon.setDepth(data.dungeonDepth);
+        shop.setWeaponTier(data.weaponTier);
+        shop.setHeadTier(data.headTier);
+        shop.setChestTier(data.chestTier);
+
+        inventory.clear();
+        if (data.inventory != null) inventory.addAll(data.inventory);
+
+        player.fullyRestore();
+        System.out.println("Welcome back, " + player.getName() + "! Resuming at Depth " + dungeon.getDepth() + ".");
     }
 
     private int getValidIntInput(int min, int max) {
