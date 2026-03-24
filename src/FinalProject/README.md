@@ -44,7 +44,6 @@ FinalProject/
 │   └── Skill.java           # Special combat abilities
 └── game/
     ├── RPGGame.java         # Game loop & Input handling
-    ├── GameInitializer.java # Sample data setup
     ├── DungeonManager.java  # Level and monster progression
     └── Shop.java            # Item purchasing system
 ```
@@ -52,7 +51,11 @@ FinalProject/
 ## Key Features
 
 - **Polymorphism**: The `attack()` method works on any object implementing `IDamageable`, whether it's a Monster or a Wooden Box.
-- **Inheritance & Abstraction**: Heroes and Monsters share common logic via `Entity`, while specific class behaviors are defined in `Warrior` and `Mage`.
-- **Robust Input Handling**: The game uses `try-catch` and scanner validation to ensure it doesn't crash on invalid menu selections (e.g., entering letters instead of numbers).
-- **Extensible Architecture**: Adding new character classes or items is as simple as creating a new class and implementing the relevant interface.
-- **Game State Management**: Clear Win/Loss conditions based on target status and player health.
+- **Combat Depth (AP System)**: A strategic Action Point (AP) system where powerful skills (like `Fireball` or `Shield Bash`) require energy, while basic attacks replenish it.
+- **Roguelike Progression**: A depth-based scaling system where enemies grow stronger as you descend, featuring persistent gear and gold that carry over after death.
+- **Dungeon Exploration**: A dynamic "Search" mechanic that can reveal monsters, loot-filled wooden boxes, or trigger random events (Traps, Foggy Areas, Danger Zones).
+- **Integrated Shop System**: A tiered equipment upgrade path (Tier 1-5) and potion restock system available during level intermissions.
+- **Inheritance & Abstraction**: A clean class hierarchy from `Entity` to specialized heroes (`Warrior`, `Mage`), following robust OOP standards.
+- **Robust Input Handling**: Extensive use of `try-catch` and scanner validation to ensure a crash-free experience on invalid menu selections.
+- **Extensible Architecture**: The project is designed for easy expansion, allowing for new character classes, items, or dungeon events with minimal code changes.
+- **Game State Management**: Clear Win/Loss conditions and a "Death & Respawn" loop that preserves meta-progression.

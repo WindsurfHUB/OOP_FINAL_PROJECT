@@ -103,7 +103,7 @@ public class RPGGame {
     private void gameLoop() {
         while (isRunning && !player.isDestroyed()) {
             System.out.println("\n=== [ DUNGEON DEPTH: " + dungeon.getDepth() + " ] ===");
-            System.out.println("Searches Completed: " + dungeon.getLevelSearches() + "/4 (Min)");
+            System.out.println("Searches Completed: " + dungeon.getLevelSearches() + "/4 (Minimum 4 search proceed)");
             handleAction();
             
             // Level clears only if:
